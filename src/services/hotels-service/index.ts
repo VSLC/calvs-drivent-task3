@@ -1,36 +1,54 @@
-import { notFoundError, unauthorizedError } from "@/errors";
+import { notFoundError, requestError, forbiddenError, paymentError } from "@/errors";
 import enrollmentRepository from "@/repositories/enrollment-repository";
 import hotelsRepository from "@/repositories/hotel-repository";
 import ticketRepository from "@/repositories/ticket-repository";
+import paymentRepository from "@/repositories/payment-repository";
+import httpStatus from "http-status";
 import { TicketStatus } from "@prisma/client";
 
-async function getHotels(userId: number) {
-  const findEnrollment = await enrollmentRepository.findWithAddressByUserId(userId);
-  if (!findEnrollment) {
-    throw unauthorizedError();
-  }
-  const findTicket = await ticketRepository.findTicketByEnrollmentId(findEnrollment.id);
-  if (!findTicket || findTicket.TicketType.isRemote === true || findTicket.TicketType.includesHotel === false || findTicket.status !== TicketStatus.PAID) {
-    throw notFoundError();
-  }
-
-  const hotels = await hotelsRepository.findHotels();
-  return hotels;
+async function getHotelsServices(userId: number) {
+  await confirmTicketAndPayment(userId);
+  const allHotels = await hotelsRepository.findHotels();
+  return allHotels;
 }
 
-async function getHotelRooms(hotelId: number, userId: number) {
-  const findEnrollment = await enrollmentRepository.findWithAddressByUserId(userId);
-  if (!findEnrollment) {
-    throw unauthorizedError();
+async function getHotelRoomsServices(hotelId: number, userId: number) {
+  await confirmTicketAndPayment(userId);
+  if (isNaN(hotelId)) {
+    throw requestError(httpStatus.BAD_REQUEST, "BAD_REQUEST");
   }
-
   const hotelsRooms = await hotelsRepository.findRoomsByHotelId(hotelId);
+
+  if (!hotelsRooms) {
+    throw notFoundError();
+  }
   return hotelsRooms;
 }
 
+async function confirmTicketAndPayment(userId: number) {
+  const enrollment = await enrollmentRepository.findWithAddressByUserId(userId);
+  if (!enrollment) {
+    throw notFoundError();
+  }
+
+  const ticket = await ticketRepository.findTicketByEnrollmentId(enrollment.id);
+  if (!ticket) {
+    throw notFoundError();
+  }
+
+  const payment = await paymentRepository.findPaymentByTicketId(ticket.id);
+  if (ticket.status !== TicketStatus.PAID || !payment) {
+    throw paymentError();
+  }
+
+  if (!ticket.TicketType.includesHotel) {
+    throw forbiddenError();
+  }
+}
+
 const hotelServices = {
-  getHotelRooms,
-  getHotels
+  getHotelRoomsServices,
+  getHotelsServices
 };
 
 export default hotelServices;
