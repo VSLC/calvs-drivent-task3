@@ -3,7 +3,6 @@ import enrollmentRepository from "@/repositories/enrollment-repository";
 import hotelsRepository from "@/repositories/hotel-repository";
 import ticketRepository from "@/repositories/ticket-repository";
 import paymentRepository from "@/repositories/payment-repository";
-import httpStatus from "http-status";
 import { TicketStatus } from "@prisma/client";
 
 async function getHotelsServices(userId: number) {
@@ -14,38 +13,30 @@ async function getHotelsServices(userId: number) {
 
 async function getHotelRoomsServices(hotelId: number, userId: number) {
   await confirmTicketAndPayment(userId);
-  if (isNaN(hotelId)) {
-    throw requestError(httpStatus.BAD_REQUEST, "BAD_REQUEST");
-  }
-  const hotelsRooms = await hotelsRepository.findRoomsByHotelId(hotelId);
-
-  if (!hotelsRooms) {
+  const hotelsRoomsbyHotelId = await hotelsRepository.findRoomsByHotelId(hotelId);
+  if (!hotelsRoomsbyHotelId) {
     throw notFoundError();
   }
-  return hotelsRooms;
+  return hotelsRoomsbyHotelId;
 }
 
 async function confirmTicketAndPayment(userId: number) {
-  const enrollment = await enrollmentRepository.findWithAddressByUserId(userId);
-  if (!enrollment) {
+  const findEnrollment = await enrollmentRepository.findWithAddressByUserId(userId);
+  if (!findEnrollment) {
     throw notFoundError();
   }
-
-  const ticket = await ticketRepository.findTicketByEnrollmentId(enrollment.id);
-  if (!ticket) {
+  const findTicket = await ticketRepository.findTicketByEnrollmentId(findEnrollment.id);
+  if (!findTicket) {
     throw notFoundError();
   }
-
-  const payment = await paymentRepository.findPaymentByTicketId(ticket.id);
-  if (ticket.status !== TicketStatus.PAID || !payment) {
+  const findPayment = await paymentRepository.findPaymentByTicketId(findTicket.id);
+  if (findTicket.status !== TicketStatus.PAID || !findPayment) {
     throw paymentError();
   }
-
-  if (!ticket.TicketType.includesHotel) {
+  if (!findTicket.TicketType.includesHotel) {
     throw forbiddenError();
   }
 }
-
 const hotelServices = {
   getHotelRoomsServices,
   getHotelsServices

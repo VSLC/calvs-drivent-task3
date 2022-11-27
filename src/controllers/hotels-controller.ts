@@ -13,16 +13,12 @@ export async function getHotels(req: AuthenticatedRequest, res: Response) {
     if (error.name === "NotFoundError") {
       return res.sendStatus(httpStatus.NOT_FOUND);
     }
-    if (error.name === "RequestError") {
-      return res.sendStatus(httpStatus.PAYMENT_REQUIRED);
-    }
     if (error.name === "ForbiddenError") {
       return res.sendStatus(httpStatus.FORBIDDEN);
     }
     if (error.name === "PaymentError") {
       return res.sendStatus(httpStatus.PAYMENT_REQUIRED);
     }
-    return res.sendStatus(httpStatus.NO_CONTENT);
   }
 }
 
@@ -42,7 +38,6 @@ export async function getRoomsByHotelId(req: AuthenticatedRequest, res: Response
     if (error.name === "PaymentError") {
       return res.sendStatus(httpStatus.PAYMENT_REQUIRED);
     }
-    return res.sendStatus(httpStatus.NO_CONTENT);
   }
 }
 
